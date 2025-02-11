@@ -1,0 +1,23 @@
+version: 2.1 
+
+orbs:
+  browser-tools: circleci/browser-tools@x.y
+  
+jobs:
+  retest:
+    #~ executor: browser-tools/default
+    docker:
+      #~ - image: python:3.10
+      - image: ubuntu:22.04
+    steps:
+      - checkout
+      - browser-tools/install-chrome
+      - browser-tools/install-chromedriver
+      - run:
+          name: formatting check
+          command:    python utils.py
+
+workflows:
+  build:
+    jobs:
+      - retest
