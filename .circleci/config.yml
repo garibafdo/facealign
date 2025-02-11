@@ -5,11 +5,9 @@ orbs:
   
 jobs:
   retest:
-    #~ executor: browser-tools/default
     docker:
       - image: python:3.10
       #~ - image: ubuntu:22.04
-    executor: browser-tools/default
     steps:
       - checkout
       - run:
