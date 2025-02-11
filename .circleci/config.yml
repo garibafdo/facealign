@@ -8,6 +8,8 @@ jobs:
     docker:
       - image: python:3.10
       #~ - image: ubuntu:22.04
+    #~ resource_class: large
+    resource_class: medium
     steps:
       - checkout
       - run:
