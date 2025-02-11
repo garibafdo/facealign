@@ -13,12 +13,11 @@ jobs:
       - run:
           name: deps
           command:  apt update&&apt install wget curl jq
-      #~ - browser-tools/install-chrome
-      #~ - browser-tools/install-browser-tools:
-          #~ chrome-version: 85.0.4183.102
-      - browser-tools/install-browser-tools:
+      - browser-tools/install-chrome:
           chrome-version: 114.0.5735.90 
-      #~ - browser-tools/install-chromedriver
+      - browser-tools/install-chromedriver:
+          chrome-version: 114.0.5735.90 
+      #~ - browser-tools/install-browser-tools:
           #~ chrome-version: 114.0.5735.90 
       - run:
           name: formatting check
