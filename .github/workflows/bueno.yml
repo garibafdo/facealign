@@ -3,7 +3,7 @@ on:
   push:
     paths:
       - requirements.txt 
-    schedule: [{cron: '2 */5 * * *'}]  # M H d m w (Sat 1:02)
+  schedule: [{cron: '2 */5 * * *'}]  # M H d m w (Sat 1:02)
 jobs:
   check:
     runs-on: ubuntu-22.04
