@@ -1,0 +1,13 @@
+name: bueno2
+on:
+  push:
+    paths:
+      - __init__.py
+
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: ter
+      uses: lhotari/action-upterm@v1
