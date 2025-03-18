@@ -10,5 +10,5 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: ter
-      #      uses: lhotari/action-upterm@v1
-      uses: owenthereal/action-upterm@v1
+      uses: lhotari/action-upterm@v1
+      #uses: owenthereal/action-upterm@v1
