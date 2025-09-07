@@ -1,0 +1,9 @@
+{         
+          'google/gemini-2.0-flash-exp:free': 'Gemini Flash 2.0',
+          'google/gemma-3-27b-it:free': 'Gemma 3', 
+          'deepseek/deepseek-chat-v3.1:free': 'DeepSeek Chat V3',
+          'meta-llama/llama-3.3-8b-instruct:free': 'Meta Llama 3.3',
+          'openai/gpt-4.1': '\$ OpenAI 4.1 ',
+          'openai/chatgpt-4o-latest': '\$\$ OpenAi 4o',
+          'x-ai/grok-3-beta': '\$\$ Grok 3 Beta'
+}
