@@ -10,21 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 🔹 Setup Kaggle API credentials
-      - name: Setup Kaggle
-        run: |
-          mkdir -p ~/.kaggle
-          echo '${{ secrets.KAGGLE_JSON }}' > ~/.kaggle/kaggle.json
-          chmod 600 ~/.kaggle/kaggle.json
-          pip install kaggle
-
-      # 🔹 Push notebook to Kaggle and trigger run
-      - name: Push notebook to Kaggle
-        run: |
-          kaggle kernels push -p kg
-          kaggle kernels status gadarmukha/auto-run-kernel
-
-      # 🔹 Run your script locally too
       - name: chk
         run: python utils.py
 
