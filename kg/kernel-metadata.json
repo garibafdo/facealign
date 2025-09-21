@@ -1,7 +1,7 @@
 {
   "id": "gadarmukh/auto-run-kernel",
   "title": "auto-run-kernel",
-  "code_file": "runner.ipynb",
+  "code_file": "runner2.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": "false",
