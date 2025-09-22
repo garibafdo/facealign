@@ -20,17 +20,24 @@ jobs:
           echo "${{ secrets.KAGGLE_JSON }}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
 
-      - name: Check Kaggle Status
-        id: status
+      - name: Push Kaggle Notebooks if Idle
         run: |
-          RAW=$(kaggle kernels status gadarmukha/auto-run-kernel)
-          echo "Raw status: $RAW"
-          STATUS=$(echo "$RAW" | grep -oP '"\K[^"]+')
-          echo "Parsed status: $STATUS"
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          declare -A kernels
+          kernels["kg"]="gadarmukha/auto-run-kernel"
+          kernels["kg2"]="gadarmukha/auto-run-kernell"
 
-      - name: Push Kaggle Notebook
-        if: ${{ steps.status.outputs.status != 'KernelWorkerStatus.RUNNING' }}
-        run: |
-          kaggle kernels push -p ./kg
+          for folder in "${!kernels[@]}"; do
+            KID=${kernels[$folder]}
+            echo "Checking status of $KID..."
+            RAW=$(kaggle kernels status $KID)
+            STATUS=$(echo "$RAW" | grep -oP '"\K[^"]+')
+            echo "Parsed status: $STATUS"
+
+            if [[ "$STATUS" != "KernelWorkerStatus.RUNNING" ]]; then
+              echo "Pushing notebook from $folder..."
+              kaggle kernels push -p ./$folder
+            else
+              echo "Skipping $KID because it is still running."
+            fi
+          done
 
