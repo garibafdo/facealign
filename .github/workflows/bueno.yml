@@ -13,4 +13,24 @@ jobs:
       - name: chk
         run: python utils.py
 
+      - name: Kaggle stuff
+        run: |
+          mkdir -p ~/.kaggle
+          pip install kaggle
+          echo "${{ secrets.KAGGLE_JSON }}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      - name: Check Kaggle Status
+        id: status
+        run: |
+          RAW=$(kaggle kernels status gadarmukha/auto-run-kernel)
+          echo "Raw status: $RAW"
+          STATUS=$(echo "$RAW" | grep -oP '"\K[^"]+')
+          echo "Parsed status: $STATUS"
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+      - name: Push Kaggle Notebook
+        if: ${{ steps.status.outputs.status != 'KernelWorkerStatus.RUNNING' }}
+        run: |
+          kaggle kernels push -p ./kg
 
