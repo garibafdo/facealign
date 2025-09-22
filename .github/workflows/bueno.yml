@@ -12,38 +12,37 @@ jobs:
 
 #      - name: chk
 #        run: python utils.py
-      - name: Set up Kaggle CLI and push notebooks
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade kaggle
-      
-          # Force Kaggle to use the config dir
-          export KAGGLE_CONFIG_DIR=$HOME/.kaggle
-      
-          mkdir -p $KAGGLE_CONFIG_DIR
-          echo "${{ secrets.KAGGLE_JSON }}" > $KAGGLE_CONFIG_DIR/kaggle.json
-          chmod 600 $KAGGLE_CONFIG_DIR/kaggle.json
-      
-          # Verify kaggle can authenticate
-          kaggle competitions list
-      
-          # Now push notebooks
-          declare -A kernels
-          kernels["kg"]="gadarmukha/auto-run-kernel"
-          kernels["kg2"]="gadarmukha/auto-run-kernell"
-      
-          for folder in "${!kernels[@]}"; do
-            KID=${kernels[$folder]}
-            echo "Checking status of $KID..."
-            RAW=$(kaggle kernels status $KID)
-            STATUS=$(echo "$RAW" | grep -oP '"\K[^"]+')
-            echo "Parsed status: $STATUS"
-      
-            if [[ "$STATUS" != "KernelWorkerStatus.RUNNING" ]]; then
-              echo "Pushing notebook from $folder..."
-              kaggle kernels push -p ./$folder
-            else
-              echo "Skipping $KID because it is still running."
-            fi
-          done
-      
+       - name: Set up Kaggle CLI and push notebooks
+         env:
+            KAGGLE_CONFIG_DIR: ${{ github.workspace }}/.kaggle
+         run: |
+            python -m pip install --upgrade pip
+            pip install --upgrade kaggle
+        
+            mkdir -p $KAGGLE_CONFIG_DIR
+            echo "${{ secrets.KAGGLE_JSON }}" > $KAGGLE_CONFIG_DIR/kaggle.json
+            chmod 600 $KAGGLE_CONFIG_DIR/kaggle.json
+        
+            # Verify authentication
+            kaggle kernels list
+        
+            # Push notebooks
+            declare -A kernels
+            kernels["kg"]="gadarmukha/auto-run-kernel"
+            kernels["kg2"]="gadarmukha/auto-run-kernell"
+        
+            for folder in "${!kernels[@]}"; do
+              KID=${kernels[$folder]}
+              echo "Checking status of $KID..."
+              RAW=$(kaggle kernels status $KID)
+              STATUS=$(echo "$RAW" | grep -oP '"\K[^"]+')
+              echo "Parsed status: $STATUS"
+        
+              if [[ "$STATUS" != "KernelWorkerStatus.RUNNING" ]]; then
+                echo "Pushing notebook from $folder..."
+                kaggle kernels push -p ./$folder
+              else
+                echo "Skipping $KID because it is still running."
+              fi
+            done
+        
