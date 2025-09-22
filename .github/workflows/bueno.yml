@@ -13,12 +13,15 @@ jobs:
       - name: chk
         run: python utils.py
 
+      - name: Install Kaggle
+        run: pip install kaggle
+
       - name: Kaggle stuff
         run: |
           mkdir -p ~/.kaggle
-          pip install kaggle
           echo "${{ secrets.KAGGLE_JSON }}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
+          export KAGGLE_CONFIG_DIR=$HOME/.kaggle
 
       - name: Push Kaggle Notebooks if Idle
         run: |
