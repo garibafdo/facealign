@@ -24,6 +24,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade kaggle jq
+          
       - name: Set up Kaggle CLI and push notebooks
         env:
           KAGGLE_CONFIG_DIR: ${{ github.workspace }}/.kaggle
@@ -34,11 +35,8 @@ jobs:
           EOF
           chmod 600 $KAGGLE_CONFIG_DIR/kaggle.json
           
-          # Test authentication and get list of kernels
           echo "Listing kernels to verify auth..."
-          KAGGLE_LIST=$(kaggle kernels list --mine --csv)
-          echo "Available kernels:"
-          echo "$KAGGLE_LIST"
+          kaggle kernels list --mine
           
           # Define kernels to check
           declare -A kernels
@@ -50,49 +48,43 @@ jobs:
             KID="${kernels[$folder]}"
             echo "Checking status of $KID..."
             
-            # First check if kernel exists in the list
-            if echo "$KAGGLE_LIST" | grep -q "$KID"; then
-              echo "Kernel $KID exists. Checking status..."
+            # Try to get kernel status with error handling
+            if RAW=$(kaggle kernels status "$KID" --json 2>&1); then
+              # Command succeeded - we got a valid response
+              STATUS=$(echo "$RAW" | jq -r '.status')
+              echo "Current status: $STATUS"
               
-              # Get kernel status
-              RAW=$(kaggle kernels status "$KID" --json 2>/dev/null || true)
-              
-              if [[ -n "$RAW" ]]; then
-                if echo "$RAW" | jq -e . >/dev/null 2>&1; then
-                  STATUS=$(echo "$RAW" | jq -r '.status')
-                  echo "Current status: $STATUS"
-                  
-                  # Only push if kernel has COMPLETED (finished running)
-                  # Don't push if it's running, queued, starting, etc.
-                  if [[ "$STATUS" == "KernelWorkerStatus.COMPLETE" ]] || 
-                     [[ "$STATUS" == "KernelWorkerStatus.CANCELED" ]] || 
-                     [[ "$STATUS" == "KernelWorkerStatus.ERROR" ]]; then
-                    echo "Kernel has finished (status: $STATUS). Pushing new version from $folder..."
-                    if [[ -d "./$folder" ]]; then
-                      kaggle kernels push -p "./$folder"
-                    else
-                      echo "Error: Folder ./$folder does not exist"
-                    fi
-                  else
-                    echo "Skipping $KID because it is still active (status: $STATUS)."
-                    echo "Active statuses include: running, queued, starting, etc."
-                  fi
+              # Only push if kernel has completed
+              if [[ "$STATUS" == "KernelWorkerStatus.COMPLETE" ]] || 
+                 [[ "$STATUS" == "KernelWorkerStatus.CANCELED" ]] || 
+                 [[ "$STATUS" == "KernelWorkerStatus.ERROR" ]]; then
+                echo "Kernel has finished. Pushing new version from $folder..."
+                if [[ -d "./$folder" ]]; then
+                  kaggle kernels push -p "./$folder"
                 else
-                  echo "Error: Invalid JSON response for $KID"
-                  echo "Raw response: $RAW"
-                  echo "Skipping to avoid duplicate runs."
+                  echo "Error: Folder ./$folder does not exist"
                 fi
               else
-                echo "Error: No response for $KID"
-                echo "Skipping to avoid duplicate runs."
+                echo "Skipping $KID because it is still active (status: $STATUS)."
               fi
               
             else
-              echo "Kernel $KID not found in list. Creating new kernel..."
-              if [[ -d "./$folder" ]]; then
-                kaggle kernels push -p "./$folder"
+              # Command failed - check the error message
+              echo "Status command failed. Error output: $RAW"
+              
+              # Check if this is a 429 error (kernel running)
+              if echo "$RAW" | grep -q "429"; then
+                echo "Detected 429 error - kernel $KID is likely running. Skipping push."
+              elif echo "$RAW" | grep -q "404"; then
+                echo "Kernel $KID not found. Creating new kernel..."
+                if [[ -d "./$folder" ]]; then
+                  kaggle kernels push -p "./$folder"
+                else
+                  echo "Error: Folder ./$folder does not exist"
+                fi
               else
-                echo "Error: Folder ./$folder does not exist"
+                echo "Unknown error for $KID. Skipping to be safe."
+                echo "Full error: $RAW"
               fi
             fi
           done
