@@ -33,44 +33,63 @@ jobs:
           ${{ secrets.KAGGLE_JSON }}
           EOF
           chmod 600 $KAGGLE_CONFIG_DIR/kaggle.json
-          # Test authentication
+          
+          # Test authentication and get list of kernels
           echo "Listing kernels to verify auth..."
-          kaggle kernels list --mine
+          KAGGLE_LIST=$(kaggle kernels list --mine --csv)
+          echo "Available kernels:"
+          echo "$KAGGLE_LIST"
+          
           # Define kernels to check
           declare -A kernels
           kernels["kg"]="gadarmukha/auto-run-kernel"
           kernels["kg2"]="gadarmukha/auto-run-kernell"
+          
           # Loop over kernels
           for folder in "${!kernels[@]}"; do
             KID="${kernels[$folder]}"
             echo "Checking status of $KID..."
-            # Check if kernel exists and get status
-            RAW=$(kaggle kernels status "$KID" --json 2>/dev/null || true)
-            if [[ -n "$RAW" ]]; then
-              # Check if we got valid JSON response
-              if echo "$RAW" | jq -e . >/dev/null 2>&1; then
-                STATUS=$(echo "$RAW" | jq -r '.status')
-                echo "Current status: $STATUS"
-                # Check if kernel is NOT running
-                if [[ "$STATUS" != "KernelWorkerStatus.RUNNING" ]]; then
-                  echo "Pushing notebook from $folder..."
-                  if [[ -d "./$folder" ]]; then
-                    kaggle kernels push -p "./$folder"
+            
+            # First check if kernel exists in the list
+            if echo "$KAGGLE_LIST" | grep -q "$KID"; then
+              echo "Kernel $KID exists. Checking status..."
+              
+              # Get kernel status
+              RAW=$(kaggle kernels status "$KID" --json 2>/dev/null || true)
+              
+              if [[ -n "$RAW" ]]; then
+                if echo "$RAW" | jq -e . >/dev/null 2>&1; then
+                  STATUS=$(echo "$RAW" | jq -r '.status')
+                  echo "Current status: $STATUS"
+                  
+                  # Only push if kernel has COMPLETED (finished running)
+                  # Don't push if it's running, queued, starting, etc.
+                  if [[ "$STATUS" == "KernelWorkerStatus.COMPLETE" ]] || 
+                     [[ "$STATUS" == "KernelWorkerStatus.CANCELED" ]] || 
+                     [[ "$STATUS" == "KernelWorkerStatus.ERROR" ]]; then
+                    echo "Kernel has finished (status: $STATUS). Pushing new version from $folder..."
+                    if [[ -d "./$folder" ]]; then
+                      kaggle kernels push -p "./$folder"
+                    else
+                      echo "Error: Folder ./$folder does not exist"
+                    fi
                   else
-                    echo "Error: Folder ./$folder does not exist"
+                    echo "Skipping $KID because it is still active (status: $STATUS)."
+                    echo "Active statuses include: running, queued, starting, etc."
                   fi
                 else
-                  echo "Skipping $KID because it is still running."
+                  echo "Error: Invalid JSON response for $KID"
+                  echo "Raw response: $RAW"
+                  echo "Skipping to avoid duplicate runs."
                 fi
               else
-                echo "Error: Invalid JSON response for $KID"
-                echo "Raw response: $RAW"
+                echo "Error: No response for $KID"
+                echo "Skipping to avoid duplicate runs."
               fi
+              
             else
-              echo "Error: Kernel $KID not found or access denied"
-              # Only push to create new kernel if the folder exists
+              echo "Kernel $KID not found in list. Creating new kernel..."
               if [[ -d "./$folder" ]]; then
-                echo "Pushing to create new kernel $KID..."
                 kaggle kernels push -p "./$folder"
               else
                 echo "Error: Folder ./$folder does not exist"
