@@ -13,18 +13,16 @@ jobs:
       - name: chk
         run: python utils.py
 
-      - name: Install Kaggle
-        run: pip install kaggle
-
-      - name: Kaggle stuff
+      - name: Set up Kaggle CLI and credentials
         run: |
+          python -m pip install --upgrade pip
+          pip install kaggle
           mkdir -p ~/.kaggle
           echo "${{ secrets.KAGGLE_JSON }}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           export KAGGLE_CONFIG_DIR=$HOME/.kaggle
 
-      - name: Push Kaggle Notebooks if Idle
-        run: |
+          # Now run the Kaggle push loop in the same shell
           declare -A kernels
           kernels["kg"]="gadarmukha/auto-run-kernel"
           kernels["kg2"]="gadarmukha/auto-run-kernell"
