@@ -17,8 +17,8 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: chk
-        run: python utils.py
+#      - name: chk
+#        run: python utils.py
 
       - name: Install dependencies
         run: |
@@ -35,6 +35,10 @@ jobs:
           EOF
           chmod 600 $KAGGLE_CONFIG_DIR/kaggle.json
           
+          echo "=== Kaggle CLI Version ==="
+          kaggle --version
+          echo ""
+          
           echo "Listing kernels to verify auth..."
           kaggle kernels list --mine
           
@@ -46,18 +50,21 @@ jobs:
           # Loop over kernels
           for folder in "${!kernels[@]}"; do
             KID="${kernels[$folder]}"
-            echo "Checking status of $KID..."
+            echo "=== Checking status of $KID ==="
             
-            # Try to get kernel status with error handling
-            if RAW=$(kaggle kernels status "$KID" --json 2>&1); then
-              # Command succeeded - we got a valid response
-              STATUS=$(echo "$RAW" | jq -r '.status')
-              echo "Current status: $STATUS"
+            # Try to get kernel status without --json flag
+            if RAW=$(kaggle kernels status "$KID" 2>&1); then
+              # Command succeeded - parse the status from the output
+              echo "Raw status output: '$RAW'"
+              
+              # Extract just the status value (e.g., "complete", "running", etc.)
+              STATUS=$(echo "$RAW" | awk '{print $NF}' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+              echo "Parsed status: '$STATUS'"
               
               # Only push if kernel has completed
-              if [[ "$STATUS" == "KernelWorkerStatus.COMPLETE" ]] || 
-                 [[ "$STATUS" == "KernelWorkerStatus.CANCELED" ]] || 
-                 [[ "$STATUS" == "KernelWorkerStatus.ERROR" ]]; then
+              if [[ "$STATUS" == "complete" ]] || 
+                 [[ "$STATUS" == "canceled" ]] || 
+                 [[ "$STATUS" == "error" ]]; then
                 echo "Kernel has finished. Pushing new version from $folder..."
                 if [[ -d "./$folder" ]]; then
                   kaggle kernels push -p "./$folder"
@@ -73,9 +80,9 @@ jobs:
               echo "Status command failed. Error output: $RAW"
               
               # Check if this is a 429 error (kernel running)
-              if echo "$RAW" | grep -q "429"; then
+              if echo "$RAW" | grep -qi "429\|too many requests\|rate limit"; then
                 echo "Detected 429 error - kernel $KID is likely running. Skipping push."
-              elif echo "$RAW" | grep -q "404"; then
+              elif echo "$RAW" | grep -qi "404\|not found"; then
                 echo "Kernel $KID not found. Creating new kernel..."
                 if [[ -d "./$folder" ]]; then
                   kaggle kernels push -p "./$folder"
@@ -83,8 +90,19 @@ jobs:
                   echo "Error: Folder ./$folder does not exist"
                 fi
               else
-                echo "Unknown error for $KID. Skipping to be safe."
-                echo "Full error: $RAW"
+                echo "Unknown error for $KID. Testing if kernel exists by listing..."
+                # Try to see if kernel exists in the list
+                if kaggle kernels list --mine | grep -q "$KID"; then
+                  echo "Kernel exists but status check failed. Assuming it's running and skipping push."
+                else
+                  echo "Kernel not found in list. Creating new kernel..."
+                  if [[ -d "./$folder" ]]; then
+                    kaggle kernels push -p "./$folder"
+                  else
+                    echo "Error: Folder ./$folder does not exist"
+                  fi
+                fi
               fi
             fi
+            echo ""
           done
