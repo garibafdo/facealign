@@ -24,7 +24,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade kaggle jq
-
       - name: Set up Kaggle CLI and push notebooks
         env:
           KAGGLE_CONFIG_DIR: ${{ github.workspace }}/.kaggle
@@ -34,43 +33,47 @@ jobs:
           ${{ secrets.KAGGLE_JSON }}
           EOF
           chmod 600 $KAGGLE_CONFIG_DIR/kaggle.json
-
           # Test authentication
           echo "Listing kernels to verify auth..."
           kaggle kernels list --mine
-
           # Define kernels to check
           declare -A kernels
           kernels["kg"]="gadarmukha/auto-run-kernel"
           kernels["kg2"]="gadarmukha/auto-run-kernell"
-
           # Loop over kernels
           for folder in "${!kernels[@]}"; do
             KID="${kernels[$folder]}"
             echo "Checking status of $KID..."
-
             # Check if kernel exists and get status
-            if RAW=$(kaggle kernels status "$KID" --json 2>/dev/null); then
-              STATUS=$(echo "$RAW" | jq -r '.status')
-              echo "Current status: $STATUS"
-
-              # Check if kernel is NOT running
-              if [[ "$STATUS" != "KernelWorkerStatus.RUNNING" ]]; then
-                echo "Pushing notebook from $folder..."
-                if [[ -d "./$folder" ]]; then
-                  kaggle kernels push -p "./$folder"
+            RAW=$(kaggle kernels status "$KID" --json 2>/dev/null || true)
+            if [[ -n "$RAW" ]]; then
+              # Check if we got valid JSON response
+              if echo "$RAW" | jq -e . >/dev/null 2>&1; then
+                STATUS=$(echo "$RAW" | jq -r '.status')
+                echo "Current status: $STATUS"
+                # Check if kernel is NOT running
+                if [[ "$STATUS" != "KernelWorkerStatus.RUNNING" ]]; then
+                  echo "Pushing notebook from $folder..."
+                  if [[ -d "./$folder" ]]; then
+                    kaggle kernels push -p "./$folder"
+                  else
+                    echo "Error: Folder ./$folder does not exist"
+                  fi
                 else
-                  echo "Error: Folder ./$folder does not exist"
+                  echo "Skipping $KID because it is still running."
                 fi
               else
-                echo "Skipping $KID because it is still running."
+                echo "Error: Invalid JSON response for $KID"
+                echo "Raw response: $RAW"
               fi
             else
               echo "Error: Kernel $KID not found or access denied"
-              # Optionally push to create the kernel if it doesn't exist
+              # Only push to create new kernel if the folder exists
               if [[ -d "./$folder" ]]; then
                 echo "Pushing to create new kernel $KID..."
                 kaggle kernels push -p "./$folder"
+              else
+                echo "Error: Folder ./$folder does not exist"
               fi
             fi
           done
