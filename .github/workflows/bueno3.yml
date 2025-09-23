@@ -23,16 +23,14 @@ jobs:
           pip install --upgrade kaggle
 
       - name: Set up Kaggle CLI
-        env:
-          KAGGLE_CONFIG_DIR: ${{ github.workspace }}/.kaggle
         run: |
-          mkdir -p $KAGGLE_CONFIG_DIR
-          cat << EOF > $KAGGLE_CONFIG_DIR/kaggle.json
+          # Create the .config/kaggle directory in the runner's home directory
+          mkdir -p ~/.config/kaggle
+          # Write the kaggle.json file to the default location
+          cat << EOF > ~/.config/kaggle/kaggle.json
           ${{ secrets.KAGGLE_JSON }}
           EOF
-          chmod 600 $KAGGLE_CONFIG_DIR/kaggle.json
-          
-          # Verify authentication
+          chmod 600 ~/.config/kaggle/kaggle.json
           echo "Verifying Kaggle authentication..."
           kaggle kernels list --mine --page-size 1
 
