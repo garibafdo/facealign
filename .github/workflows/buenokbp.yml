@@ -1,4 +1,4 @@
-name: bueno
+name: buenokbp
 on:
   push:
     paths:
