@@ -1,0 +1,11 @@
+{
+  "id": "gabfamka/main-kernelo",
+  "title": "main-kernelo",
+  "code_file": "runner.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "false",
+  "enable_internet": "true"
+}
+

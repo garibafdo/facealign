@@ -1,0 +1,53 @@
+name: buenokg2
+on:
+  push:
+    paths:
+      - app.py
+  schedule:
+    - cron: '51 0,12 * * *'  # Run at 00:00 and 12:00 UTC daily
+
+jobs:
+  push-kernels:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade kaggle
+
+      - name: Set up Kaggle CLI
+        run: |
+          # Create the .config/kaggle directory in the runner's home directory
+          mkdir -p ~/.config/kaggle
+          # Write the kaggle.json file to the default location
+          cat << EOF > ~/.config/kaggle/kaggle.json
+          ${{ secrets.KAGGLE_JSON2 }}
+          EOF
+          chmod 600 ~/.config/kaggle/kaggle.json
+          echo "Verifying Kaggle authentication..."
+          kaggle kernels list --mine --page-size 1
+
+      - name: Push kernels
+        run: |
+          echo "Pushing kernels at $(date)"
+          
+          # Define kernel folders
+          kernels=("kg3" "kg4")
+          
+          for folder in "${kernels[@]}"; do
+            echo "Pushing kernel from ./$folder"
+            if [[ -d "./$folder" ]]; then
+              kaggle kernels push -p "./$folder"
+              echo "Successfully pushed $folder"
+            else
+              echo "Error: Folder ./$folder does not exist"
+            fi
+            echo "---"
+          done
